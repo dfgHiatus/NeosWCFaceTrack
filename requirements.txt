@@ -1,0 +1,8 @@
+asyncio
+requests==2.22.0
+websockets==8.1
+geffnet==1.0.0
+opencv-python
+onnxruntime
+pillow
+numpy
