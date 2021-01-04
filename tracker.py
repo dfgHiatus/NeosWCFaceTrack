@@ -328,10 +328,10 @@ class FaceInfo():
         self.id = id
         self.frame_count = -1
         self.tracker = tracker
-        self.contour_pts = [0,1,15,16,27,28,29,30,31,32,33,34,35]
+        self.contour_pts = [0,1,8,15,16,27,28,29,30,31,32,33,34,35]
         self.face_3d = copy.copy(self.tracker.face_3d)
         if self.tracker.model_type == -1:
-            self.contour_pts = [0,2,14,16,27,30,33]
+            self.contour_pts = [0,2,8,14,16,27,30,33]
         self.reset()
         self.alive = False
         self.coord = None
@@ -497,7 +497,7 @@ class Tracker():
     def __init__(self, width, height, model_type=3, detection_threshold=0.6, threshold=None, max_faces=1, discard_after=5, scan_every=3, bbox_growth=0.0, max_threads=4, silent=False, model_dir=None, no_gaze=False, use_retinaface=False, max_feature_updates=0, static_model=False, feature_level=2, try_hard=False):
         options = onnxruntime.SessionOptions()
         options.inter_op_num_threads = 1
-        options.intra_op_num_threads = max(max_threads,4)
+        options.intra_op_num_threads = min(max_threads,4)
         options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
         options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
         options.log_severity_level = 3
@@ -536,7 +536,7 @@ class Tracker():
         for i in range(self.max_workers):
             options = onnxruntime.SessionOptions()
             options.inter_op_num_threads = 1
-            options.intra_op_num_threads = max_threads // self.max_workers
+            options.intra_op_num_threads = min(max(max_threads // self.max_workers, 4), 1)
             if options.intra_op_num_threads < 1:
                 options.intra_op_num_threads = 1
             elif i < extra_threads:
@@ -767,13 +767,9 @@ class Tracker():
         if not face_info.rotation is None:
             success, face_info.rotation, face_info.translation = cv2.solvePnP(face_info.contour, image_pts, self.camera, self.dist_coeffs, useExtrinsicGuess=True, rvec=np.transpose(face_info.rotation), tvec=np.transpose(face_info.translation), flags=cv2.SOLVEPNP_ITERATIVE)
         else:
-            # Include jaw point for initial estimate to increase stability
-            image_pts = np.array(lms)[face_info.contour_pts + [8], 0:2]
-            contour = np.array(face_info.face_3d[face_info.contour_pts + [8]])
-
             rvec = np.array([0, 0, 0], np.float32)
             tvec = np.array([0, 0, 0], np.float32)
-            success, face_info.rotation, face_info.translation = cv2.solvePnP(contour, image_pts, self.camera, self.dist_coeffs, useExtrinsicGuess=True, rvec=rvec, tvec=tvec, flags=cv2.SOLVEPNP_ITERATIVE)
+            success, face_info.rotation, face_info.translation = cv2.solvePnP(face_info.contour, image_pts, self.camera, self.dist_coeffs, useExtrinsicGuess=True, rvec=rvec, tvec=tvec, flags=cv2.SOLVEPNP_ITERATIVE)
 
         rotation = face_info.rotation
         translation = face_info.translation
