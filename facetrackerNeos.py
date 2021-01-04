@@ -16,7 +16,7 @@ if os.name == 'nt':
     parser.add_argument("-B", "--blackmagic", type=int, help="When set to 1, special support for Blackmagic devices is enabled", default=0)
 else:
     parser.add_argument("-W", "--width", type=int, help="Set raw RGB width", default=640)
-    parser.add_argument("-H", "--height", type=int, help="Set raw RGB height", default=480)
+    parser.add_argument("-H", "--height", type=int, help="Set raw RGB height", default=360)
 parser.add_argument("-c", "--capture", help="Set camera ID (0, 1...) or video file", default="0")
 parser.add_argument("-m", "--max-threads", type=int, help="Set the maximum number of threads", default=1)
 parser.add_argument("-t", "--threshold", type=float, help="Set minimum confidence threshold for face tracking", default=None)
@@ -34,12 +34,14 @@ parser.add_argument("--try-hard", type=int, help="When set to 1, the tracker wil
 parser.add_argument("--raw-rgb", type=int, help="When this is set, raw RGB frames of the size given with \"-W\" and \"-H\" are read from standard input instead of reading a video", default=0)
 parser.add_argument("--log-data", help="You can set a filename to which tracking data will be logged here", default="")
 parser.add_argument("--log-output", help="You can set a filename to console output will be logged here", default="")
-parser.add_argument("--model", type=int, help="This can be used to select the tracking model. Higher numbers are models with better tracking quality, but slower speed. Models 1 and 0 tend to be too rigid for expression and blink detection.", default=2, choices=[-1, 0, 1, 2, 3])
+parser.add_argument("--model", type=int, help="This can be used to select the tracking model. Higher numbers are models with better tracking quality, but slower speed. Models 1 and 0 tend to be too rigid for expression and blink detection. Model -2 is roughly equivalent to model 1, but faster. Model -3 is between models 0 and -1.", default=-2, choices=[-3, -2, -1, 0, 1, 2, 3])
 parser.add_argument("--model-dir", help="This can be used to specify the path to the directory containing the .onnx model files", default=None)
 parser.add_argument("--gaze-tracking", type=int, help="When set to 1, experimental blink detection and gaze tracking are enabled, which makes things slightly slower", default=1)
 parser.add_argument("--face-id-offset", type=int, help="When set, this offset is added to all face ids, which can be useful for mixing tracking data from multiple network sources", default=0)
 parser.add_argument("--repeat-video", type=int, help="When set to 1 and a video file was specified with -c, the tracker will loop the video until interrupted", default=0)
 parser.add_argument("--dump-points", type=str, help="When set to a filename, the current face 3D points are made symmetric and dumped to the given file when quitting the visualization with the \"q\" key", default="")
+parser.add_argument("--smooth-rotation", type=int, help="When set to 1, the 3D face rotation data will be smoothed, reducing jitter considerably but also reducing responsiveness slightly", default=1)
+parser.add_argument("--smooth-translation", type=int, help="When set to 1, the 3D face translation data will be smoothed, reducing jitter considerably but also reducing responsiveness slightly", default=1)
 if os.name == 'nt':
     parser.add_argument("--use-dshowcapture", type=int, help="When set to 1, libdshowcapture will be used for video input instead of OpenCV", default=1)
     parser.add_argument("--blackmagic-options", type=str, help="When set, this additional option string is passed to the blackmagic capture library", default=None)
@@ -129,7 +131,7 @@ from tracker import Tracker, get_model_base_path
 
 if args.faces >= 40:
     print("Transmission of tracking data over network is not supported with 40 or more faces.")
-
+ 
 fps = 0
 dcap = None
 use_dshowcapture_flag = False
@@ -225,6 +227,13 @@ async def facetrack(websocket,path):
         'beta': 0.5,
         'dcutoff': 1.0,
         }
+    
+    oeMouthOpenConfig = {
+        'freq': 18,
+        'mincutoff': 1.0,
+        'beta': 0.7,
+        'dcutoff': 1.0,
+        }
         
     oeEyeBrowUDConfig = {
         'freq': 18,
@@ -235,28 +244,29 @@ async def facetrack(websocket,path):
         
     oeHeadRotationConfig = {
         'freq': 18,
-        'mincutoff': 1.0,
-        'beta': 0.8,
+        'mincutoff': 1.1,
+        'beta': 1.0,
         'dcutoff': 1.0,
         }
         
     oeHeadPositionConfig = {
         'freq': 18,
-        'mincutoff': 0.8,
-        'beta': 0.5,
+        'mincutoff': 1.1,
+        'beta': 0.8,
         'dcutoff': 1.0,
         }
     
     # Head Rotation Filters
-    # HRotXF = OneEuroFilter(**oeHeadRotationConfig)
-    # HRotYF = OneEuroFilter(**oeHeadRotationConfig)
-    # HRotZF = OneEuroFilter(**oeHeadRotationConfig)
-    # HRotWF = OneEuroFilter(**oeHeadRotationConfig)
+    HRotXF = OneEuroFilter(**oeHeadRotationConfig)
+    HRotYF = OneEuroFilter(**oeHeadRotationConfig)
+    HRotZF = OneEuroFilter(**oeHeadRotationConfig)
+    HRotWF = OneEuroFilter(**oeHeadRotationConfig)
     # Head Position FIlters
     HPosXF = OneEuroFilter(**oeHeadPositionConfig)
     HPosYF = OneEuroFilter(**oeHeadPositionConfig)
     HPosZF = OneEuroFilter(**oeHeadPositionConfig)
     
+    MouthOpenF = OneEuroFilter(**oeMouthOpenConfig)
     MouthWideF = OneEuroFilter(**oeMouthWideConfig)
     REyeBrowUDF = OneEuroFilter(**oeEyeBrowUDConfig)
     LEyeBrowUDF = OneEuroFilter(**oeEyeBrowUDConfig)
@@ -310,7 +320,7 @@ async def facetrack(websocket,path):
         if first:
             first = False
             height, width, channels = frame.shape
-            tracker = Tracker(width, height, threshold=args.threshold, max_threads=args.max_threads, max_faces=args.faces, discard_after=args.discard_after, scan_every=args.scan_every, silent=False if args.silent == 0 else True, model_type=args.model, model_dir=args.model_dir, no_gaze=False if args.gaze_tracking != 0 and args.model >= 0 else True, detection_threshold=args.detection_threshold, use_retinaface=args.scan_retinaface, max_feature_updates=args.max_feature_updates, static_model=True if args.no_3d_adapt == 1 else False, try_hard=args.try_hard == 1)
+            tracker = Tracker(width, height, threshold=args.threshold, max_threads=args.max_threads, max_faces=args.faces, discard_after=args.discard_after, scan_every=args.scan_every, silent=False if args.silent == 0 else True, model_type=args.model, model_dir=args.model_dir, no_gaze=False if args.gaze_tracking != 0 and args.model != -1 else True, detection_threshold=args.detection_threshold, use_retinaface=args.scan_retinaface, max_feature_updates=args.max_feature_updates, static_model=True if args.no_3d_adapt == 1 else False, try_hard=args.try_hard == 1)
 
         try:
             faces = tracker.predict(frame)
@@ -325,15 +335,24 @@ async def facetrack(websocket,path):
                 if args.silent == 0:
                     print(f"Confidence[{f.id}]: {f.conf:.4f} / 3D fitting error: {f.pnp_error:.4f} / Eyes: {left_state}, {right_state}")
                 detected = True
-
-                # Available properties: now f.id width height f.eye_blink[0] f.eye_blink[1] f.success f.pnp_error f.quaternion[0] f.quaternion[1] f.quaternion[2] f.quaternion[3] f.euler[0] f.euler[1] f.euler[2] f.translation[0] f.translation[1] f.translation[2]
+                
+                # Sometimes the data can be garbage, in this case we send the last valid data as the new data and skip the frame
+                # Usual valid ranges for the z position (depth) are from -5.0 (furthest away) to -2.0
+                if (f.translation[2] < -7.0) or (f.translation[2] > -1.0):
+                    socketString = lastSocketString
+                    continue
 
                 # Socketstring concatenation for output into neos
+                # Available properties: now f.id width height f.eye_blink[0] f.eye_blink[1]
+                # f.success f.pnp_error f.quaternion[0] f.quaternion[1] f.quaternion[2] f.quaternion[3]
+                # f.euler[0] f.euler[1] f.euler[2] f.translation[0] f.translation[1] f.translation[2]
                 
                 # Add the rotation floatQ
                 # Use this line and comment the other one if you wanna have jitter-free rotation in exchange for a latency increase and a reduction in responsiveness to fast motions
-                #socketString += f"[{HRotXF(f.quaternion[0],timestamp)};{HRotYF(f.quaternion[1],timestamp)};{HRotZF(f.quaternion[2],timestamp)};{HRotWF(f.quaternion[3],timestamp)}],"
-                socketString += f"[{f.quaternion[0]};{f.quaternion[1]};{f.quaternion[2]};{f.quaternion[3]}],"
+                if args.smooth_rotation == 1:
+                    socketString += f"[{HRotXF(f.quaternion[0],timestamp)};{HRotYF(f.quaternion[1],timestamp)};{HRotZF(f.quaternion[2],timestamp)};{HRotWF(f.quaternion[3],timestamp)}],"
+                else:
+                    socketString += f"[{f.quaternion[0]};{f.quaternion[1]};{f.quaternion[2]};{f.quaternion[3]}],"
                 
                 # Add the translation float3
                 try:
@@ -344,25 +363,27 @@ async def facetrack(websocket,path):
                 # Add the blink ratio, output the most opened eye's ratio for both if the difference between
                 #eye ratios is less than the threshold, otherwise pass the most opened eye's ratio and
                 #multiply the blinking eye's ratio to make winking possible
-                if f.eye_blink[1]-f.eye_blink[0] > 0.17:
-                    socketString += f"[{f.eye_blink[1]:.6f};{0.5*f.eye_blink[0]*f.eye_blink[0]:.6f}],"
-                elif f.eye_blink[1]-f.eye_blink[0] < -0.17:
-                    socketString += f"[{0.5*f.eye_blink[1]*f.eye_blink[1]:.6f};{f.eye_blink[0]:.6f}],"
-                else:
-                    avgBlink = (f.eye_blink[0] + f.eye_blink[1] + max(f.eye_blink[0],f.eye_blink[1])) / 3
-                    socketString += f"[{avgBlink:.6f};{avgBlink:.6f}],"
+                #if f.eye_blink[1]-f.eye_blink[0] > 0.17:
+                #    socketString += f"[{f.eye_blink[1]:.6f};{0.5*f.eye_blink[0]*f.eye_blink[0]:.6f}],"
+                #elif f.eye_blink[1]-f.eye_blink[0] < -0.17:
+                #    socketString += f"[{0.5*f.eye_blink[1]*f.eye_blink[1]:.6f};{f.eye_blink[0]:.6f}],"
+                #else:
+                #    avgBlink = (f.eye_blink[0] + f.eye_blink[1] + max(f.eye_blink[0],f.eye_blink[1])) / 3
+                #    socketString += f"[{avgBlink:.6f};{avgBlink:.6f}],"
+                
+                # Adds the raw blink ratio
+                socketString += f"[{f.eye_blink[1]:.6f};{f.eye_blink[0]:.6f}],"
                     
+                
                 # Features: ["eye_l", "eye_r", "eyebrow_steepness_l", "eyebrow_updown_l", "eyebrow_quirk_l", "eyebrow_steepness_r", "eyebrow_updown_r", "eyebrow_quirk_r", "mouth_corner_updown_l", "mouth_corner_inout_l", "mouth_corner_updown_r", "mouth_corner_inout_r", "mouth_open", "mouth_wide"]
 
                 # Features can return a null value, we don't want this so we check if they are null and set them to 0.0
-                if (not "mouth_open" in f.current_features) or (f.current_features["mouth_open"] < 0.15):
-                    mouthOpen = 0.0
-                else:
-                    mouthOpen = (f.current_features["mouth_open"] - 0.15) * 1.1764
+                if (not "mouth_open" in f.current_features):
+                    f.current_features["mouth_open"] = 0.0
                 if (not "mouth_wide" in f.current_features):
                     f.current_features["mouth_wide"] = 0.0
                 # Add the mouth properties as float2, a positive number means more open
-                socketString += f"[{mouthOpen:.6f};{MouthWideF(f.current_features['mouth_wide'], timestamp):.6f}],"
+                socketString += f"[{f.current_features['mouth_open']:.6f};{MouthWideF(f.current_features['mouth_wide'], timestamp):.6f}],"
 
                 if not "eyebrow_updown_l" in f.current_features:
                     f.current_features["eyebrow_updown_l"] = 0.0
@@ -372,7 +393,7 @@ async def facetrack(websocket,path):
                 socketString += f"[{LEyeBrowUDF(f.current_features['eyebrow_updown_l'], timestamp):.6f};{REyeBrowUDF(f.current_features['eyebrow_updown_r'], timestamp):.6f}],"
 
                 # If the AI loses tracking of a face, when it recovers it it'll return 0.0 on all data for the first frame
-                # This fixes it by sending the last good tracking data instead
+                # This fixes that by sending the last good tracking data instead
                 if (f.euler[0] is None) or f.euler[0] == 0.0:
                     socketString = lastSocketString
 

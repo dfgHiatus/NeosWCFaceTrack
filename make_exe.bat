@@ -1,4 +1,4 @@
-pyinstaller facetracker.spec --onedir ^
+pyinstaller facetrackerNeos.spec --onedir ^
     --add-binary dshowcapture/dshowcapture_x86.dll;. ^
     --add-binary dshowcapture/dshowcapture_x64.dll;. ^
     --add-binary dshowcapture/libminibmcapture32.dll;. ^
@@ -11,6 +11,6 @@ pyinstaller facetracker.spec --onedir ^
     --add-binary vccorlib140.dll;. ^
     --add-binary run.bat;.
 
-del dist\facetracker\cv2\opencv_videoio_ffmpeg420_64.dll
+del dist\facetrackerNeos\cv2\opencv_videoio_ffmpeg420_64.dll
 
 pause

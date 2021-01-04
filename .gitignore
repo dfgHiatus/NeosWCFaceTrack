@@ -1,8 +1,14 @@
 *.mp4
 __pycache__/*
+build/*
 Binary/*
+dist/*
 Samples/*
 *.zip
 *.7z
 CSharp/*
 VSeeFace/*
+concrt140.dll
+msvcp140.dll
+vccorlib140.dll
+VCOMP140.DLL
