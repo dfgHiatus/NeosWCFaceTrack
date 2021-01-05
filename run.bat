@@ -29,6 +29,4 @@ set model=-2
 set /p model=Select the tracking model (default -2): 
 echo.
 
-facetrackerNeos -c %cameraNum% -D %dcaps% --model %model%
-
-pause
+start facetrackerNeos -c %cameraNum% -D %dcaps% --model %model%
