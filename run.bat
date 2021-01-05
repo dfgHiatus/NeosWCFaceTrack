@@ -11,7 +11,7 @@ echo.
 facetrackerNeos -a %cameraNum%
 
 set dcaps=-1
-set /p dcaps=Select your camera mode or -1 for default settings. A lower resolution runs faster:
+set /p dcaps=Select your camera mode. It's recommended to pick the lowest resolution:
 echo.
 
 echo Tracking model options.
@@ -29,4 +29,12 @@ set model=-2
 set /p model=Select the tracking model (default -2): 
 echo.
 
-start facetrackerNeos -c %cameraNum% -D %dcaps% --model %model%
+set smoothr=1
+set /p smoothr=Enter 1 to enable smoothing of head rotation, or enter 0 to disable (default 1): 
+echo.
+
+set smoothp=1
+set /p smoothp=Enter 1 to enable smoothing of head position, or enter 0 to disable (default 1): 
+echo.
+
+start facetrackerNeos -c %cameraNum% -D %dcaps% --model %model% --smooth-rotation %smoothr% --smooth-translation %smoothp%
