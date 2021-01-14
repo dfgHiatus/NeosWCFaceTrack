@@ -40,7 +40,7 @@ parser.add_argument("--gaze-tracking", type=int, help="When set to 1, experiment
 parser.add_argument("--face-id-offset", type=int, help="When set, this offset is added to all face ids, which can be useful for mixing tracking data from multiple network sources", default=0)
 parser.add_argument("--repeat-video", type=int, help="When set to 1 and a video file was specified with -c, the tracker will loop the video until interrupted", default=0)
 parser.add_argument("--dump-points", type=str, help="When set to a filename, the current face 3D points are made symmetric and dumped to the given file when quitting the visualization with the \"q\" key", default="")
-parser.add_argument("--smooth-rotation", type=int, help="When set to 1, the 3D face rotation data will be smoothed, reducing jitter considerably but also reducing responsiveness slightly", default=1)
+parser.add_argument("--smooth-rotation", type=int, help="When set to 1, the 3D face rotation data will be smoothed, reducing jitter considerably but also reducing responsiveness slightly", default=0)
 parser.add_argument("--smooth-translation", type=int, help="When set to 1, the 3D face translation data will be smoothed, reducing jitter considerably but also reducing responsiveness slightly", default=1)
 if os.name == 'nt':
     parser.add_argument("--use-dshowcapture", type=int, help="When set to 1, libdshowcapture will be used for video input instead of OpenCV", default=1)
@@ -244,8 +244,8 @@ async def facetrack(websocket,path):
         
     oeHeadRotationConfig = {
         'freq': 18,
-        'mincutoff': 1.1,
-        'beta': 1.0,
+        'mincutoff': 1.2,
+        'beta': 1.2,
         'dcutoff': 1.0,
         }
         
@@ -276,6 +276,8 @@ async def facetrack(websocket,path):
     
     timestamp = 1
     now = time.time()
+    
+    print("Connection Successful")
 
     async for message in websocket:
         if not input_reader.is_open() or need_reinit == 1:
@@ -424,6 +426,8 @@ async def facetrack(websocket,path):
             if failures > 30:
                 break
         del frame
+
+print("Awaiting for Neos websocket client connection...")
 
 # Pushes string to port 7010
 asyncio.get_event_loop().run_until_complete(
