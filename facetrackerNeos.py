@@ -40,8 +40,8 @@ parser.add_argument("--gaze-tracking", type=int, help="When set to 1, experiment
 parser.add_argument("--face-id-offset", type=int, help="When set, this offset is added to all face ids, which can be useful for mixing tracking data from multiple network sources", default=0)
 parser.add_argument("--repeat-video", type=int, help="When set to 1 and a video file was specified with -c, the tracker will loop the video until interrupted", default=0)
 parser.add_argument("--dump-points", type=str, help="When set to a filename, the current face 3D points are made symmetric and dumped to the given file when quitting the visualization with the \"q\" key", default="")
-parser.add_argument("--smooth-rotation", type=int, help="When set to 1, the 3D face rotation data will be smoothed, reducing jitter considerably but also reducing responsiveness slightly", default=1)
-parser.add_argument("--smooth-translation", type=int, help="When set to 1, the 3D face translation data will be smoothed, reducing jitter considerably but also reducing responsiveness slightly", default=1)
+parser.add_argument("--smooth-rotation", type=int, help="When set to 1, the 3D face rotation data will be smoothed, reducing jitter considerably but also reducing rotation responsiveness slightly", default=0)
+parser.add_argument("--smooth-translation", type=int, help="When set to 1, the 3D face translation data will be smoothed, reducing jitter considerably but also reducing translation responsiveness slightly", default=0)
 if os.name == 'nt':
     parser.add_argument("--use-dshowcapture", type=int, help="When set to 1, libdshowcapture will be used for video input instead of OpenCV", default=1)
     parser.add_argument("--blackmagic-options", type=str, help="When set, this additional option string is passed to the blackmagic capture library", default=None)
@@ -271,6 +271,49 @@ async def facetrack(websocket,path):
     REyeBrowUDF = OneEuroFilter(**oeEyeBrowUDConfig)
     LEyeBrowUDF = OneEuroFilter(**oeEyeBrowUDConfig)
 
+    # Initialize 1Euro Filters for gaze tracking
+
+    oeGazeConfig = {
+            'freq': 18,
+            'mincutoff': 1.0,
+            'beta': 0.8,
+            'dcutoff': 1.0,
+            }
+
+    LGazepoint = (0,0)
+    LGazepointFx = OneEuroFilter(**oeGazeConfig)
+    LGazepointFy = OneEuroFilter(**oeGazeConfig)
+    RGazepoint = (0,0)
+    RGazepointFx = OneEuroFilter(**oeGazeConfig)
+    RGazepointFy = OneEuroFilter(**oeGazeConfig)
+    LTopLeft = (0,0)
+    LTopLeftFx = OneEuroFilter(**oeGazeConfig)
+    LTopLeftFy = OneEuroFilter(**oeGazeConfig)
+    LTopRight = (0,0)
+    LTopRightFx = OneEuroFilter(**oeGazeConfig)
+    LTopRightFy = OneEuroFilter(**oeGazeConfig)
+    LBotLeft = (0,0)
+    LBotLeftFx = OneEuroFilter(**oeGazeConfig)
+    LBotLeftFy = OneEuroFilter(**oeGazeConfig)
+    LBotRight = (0,0)
+    LBotRightFx = OneEuroFilter(**oeGazeConfig)
+    LBotRightFy = OneEuroFilter(**oeGazeConfig)
+    RTopLeft = (0,0)
+    RTopLeftFx = OneEuroFilter(**oeGazeConfig)
+    RTopLeftFy = OneEuroFilter(**oeGazeConfig)
+    RTopRight = (0,0)
+    RTopRightFx = OneEuroFilter(**oeGazeConfig)
+    RTopRightFy = OneEuroFilter(**oeGazeConfig)
+    RBotLeft = (0,0)
+    RBotLeftFx = OneEuroFilter(**oeGazeConfig)
+    RBotLeftFy = OneEuroFilter(**oeGazeConfig)
+    RBotRight = (0,0)
+    RBotRightFx = OneEuroFilter(**oeGazeConfig)
+    RBotRightFy = OneEuroFilter(**oeGazeConfig)
+
+    GazeLR = OneEuroFilter(**oeGazeConfig)
+    GazeUD = OneEuroFilter(**oeGazeConfig)
+
     lastSocketString = ""
     lastDetected = False
     
@@ -279,157 +322,199 @@ async def facetrack(websocket,path):
     
     print("Connection Successful")
 
-    async for message in websocket:
-        if not input_reader.is_open() or need_reinit == 1:
-            input_reader = InputReader(args.capture, args.raw_rgb, args.width, args.height, fps, use_dshowcapture=use_dshowcapture_flag, dcap=dcap)
-            if input_reader.name != source_name:
-                print(f"Failed to reinitialize camera and got {input_reader.name} instead of {source_name}.")
-                sys.exit(1)
-            need_reinit = 2
-            time.sleep(0.01)
-            continue
-        if not input_reader.is_ready():
-            time.sleep(0.01)
-            continue
-
-        # Empty string to be sent
-        socketString = ""
-
-        ret, frame = input_reader.read()
-        if not ret:
-            if repeat:
-                if need_reinit == 0:
-                    need_reinit = 1
+    try:
+        async for message in websocket:
+            if not input_reader.is_open() or need_reinit == 1:
+                input_reader = InputReader(args.capture, args.raw_rgb, args.width, args.height, fps, use_dshowcapture=use_dshowcapture_flag, dcap=dcap)
+                if input_reader.name != source_name:
+                    print(f"Failed to reinitialize camera and got {input_reader.name} instead of {source_name}.")
+                    sys.exit(1)
+                need_reinit = 2
                 continue
-            elif is_camera:
-                attempt += 1
-                if attempt > 30:
-                    break
-                else:
-                    time.sleep(0.01)
-                    if attempt == 3:
+            if not input_reader.is_ready():
+                continue
+
+            ret, frame = input_reader.read()
+            if not ret:
+                if repeat:
+                    if need_reinit == 0:
                         need_reinit = 1
                     continue
-            else:
-                break;
-
-        attempt = 0
-        need_reinit = 0
-        frame_count += 1
-        timestamp += time.time() - now
-        now = time.time()
-
-        if first:
-            first = False
-            height, width, channels = frame.shape
-            tracker = Tracker(width, height, threshold=args.threshold, max_threads=args.max_threads, max_faces=args.faces, discard_after=args.discard_after, scan_every=args.scan_every, silent=False if args.silent == 0 else True, model_type=args.model, model_dir=args.model_dir, no_gaze=False if args.gaze_tracking != 0 and args.model != -1 else True, detection_threshold=args.detection_threshold, use_retinaface=args.scan_retinaface, max_feature_updates=args.max_feature_updates, static_model=True if args.no_3d_adapt == 1 else False, try_hard=args.try_hard == 1)
-
-        try:
-            faces = tracker.predict(frame)
-            detected = False
-            for face_num, f in enumerate(faces):
-                f = copy.copy(f)
-                f.id += args.face_id_offset
-                if f.eye_blink is None:
-                    f.eye_blink = [1, 1]
-                right_state = "O" if f.eye_blink[0] > 0.30 else "-"
-                left_state = "O" if f.eye_blink[1] > 0.30 else "-"
-                if args.silent == 0:
-                    print(f"Confidence[{f.id}]: {f.conf:.4f} / 3D fitting error: {f.pnp_error:.4f} / Eyes: {left_state}, {right_state}")
-                detected = True
-                
-                # Sometimes the data can be garbage, in this case we send the last valid data as the new data and skip the frame
-                # Usual valid ranges for the z position (depth) are from -5.0 (furthest away) to -2.0
-                if (f.translation[2] < -7.0) or (f.translation[2] > -1.0):
-                    socketString = lastSocketString
-                    continue
-
-                # Socketstring concatenation for output into neos
-                # Available properties: now f.id width height f.eye_blink[0] f.eye_blink[1]
-                # f.success f.pnp_error f.quaternion[0] f.quaternion[1] f.quaternion[2] f.quaternion[3]
-                # f.euler[0] f.euler[1] f.euler[2] f.translation[0] f.translation[1] f.translation[2]
-                
-                # Add the rotation floatQ
-                # Use this line and comment the other one if you wanna have jitter-free rotation in exchange for a latency increase and a reduction in responsiveness to fast motions
-                if args.smooth_rotation == 1:
-                    socketString += f"[{HRotXF(f.quaternion[0],timestamp)};{HRotYF(f.quaternion[1],timestamp)};{HRotZF(f.quaternion[2],timestamp)};{HRotWF(f.quaternion[3],timestamp)}],"
+                elif is_camera:
+                    attempt += 1
+                    if attempt > 20:
+                        break
+                    else:
+                        time.sleep(0.01)
+                        if attempt == 3:
+                            need_reinit = 1
+                        continue
                 else:
-                    socketString += f"[{f.quaternion[0]};{f.quaternion[1]};{f.quaternion[2]};{f.quaternion[3]}],"
-                
-                # Add the translation float3
-                try:
-                    socketString += f"[{HPosXF(f.translation[1], timestamp):.6f};{HPosYF(f.translation[0], timestamp):.6f};{HPosZF(f.translation[2], timestamp):.6f}],"
-                except:
-                    socketString += f"[{f.translation[1]:.6f};{f.translation[0]:.6f};{f.translation[2]:.6f}],"
-                  
-                # Add the blink ratio, output the most opened eye's ratio for both if the difference between
-                #eye ratios is less than the threshold, otherwise pass the most opened eye's ratio and
-                #multiply the blinking eye's ratio to make winking possible
-                #if f.eye_blink[1]-f.eye_blink[0] > 0.17:
-                #    socketString += f"[{f.eye_blink[1]:.6f};{0.5*f.eye_blink[0]*f.eye_blink[0]:.6f}],"
-                #elif f.eye_blink[1]-f.eye_blink[0] < -0.17:
-                #    socketString += f"[{0.5*f.eye_blink[1]*f.eye_blink[1]:.6f};{f.eye_blink[0]:.6f}],"
-                #else:
-                #    avgBlink = (f.eye_blink[0] + f.eye_blink[1] + max(f.eye_blink[0],f.eye_blink[1])) / 3
-                #    socketString += f"[{avgBlink:.6f};{avgBlink:.6f}],"
-                
-                # Adds the raw blink ratio
-                socketString += f"[{f.eye_blink[1]:.6f};{f.eye_blink[0]:.6f}],"
+                    break
+
+            attempt = 0
+            need_reinit = 0
+            frame_count += 1
+            timestamp += time.time() - now
+            now = time.time()
+
+            if first:
+                first = False
+                height, width, _ = frame.shape
+                tracker = Tracker(width, height, threshold=args.threshold, max_threads=args.max_threads, max_faces=args.faces, discard_after=args.discard_after, scan_every=args.scan_every, silent=False if args.silent == 0 else True, model_type=args.model, model_dir=args.model_dir, no_gaze=False if args.gaze_tracking != 0 and args.model != -1 else True, detection_threshold=args.detection_threshold, use_retinaface=args.scan_retinaface, max_feature_updates=args.max_feature_updates, static_model=True if args.no_3d_adapt == 1 else False, try_hard=args.try_hard == 1)
+
+            # Empty string to be sent
+            socketString = ""
+
+            try:
+                faces = tracker.predict(frame)
+                detected = False
+                for face_num, f in enumerate(faces):
+                    f = copy.copy(f)
+                    f.id += args.face_id_offset
+                    if f.eye_blink is None:
+                        f.eye_blink = [1, 1]
+                    if args.silent == 0:
+                        right_state = "O" if f.eye_blink[0] > 0.30 else "-"
+                        left_state = "O" if f.eye_blink[1] > 0.30 else "-"
+                        print(f"Confidence[{f.id}]: {f.conf:.4f} / 3D fitting error: {f.pnp_error:.4f} / Eyes: {left_state}, {right_state}")
+                    detected = True
                     
+                    # Sometimes the data can be garbage, in this case we send the last valid data as the new data and skip the frame
+                    # Usual valid ranges for the z position (depth) are from -5.0 (furthest away) to -2.0
+                    if (f.translation[2] < -7.0) or (f.translation[2] > -1.0):
+                        socketString = lastSocketString
+                        continue
+
+                    # Socketstring concatenation for output into neos
+                    # Available properties: now f.id width height f.eye_blink[0] f.eye_blink[1]
+                    # f.success f.pnp_error f.quaternion[0] f.quaternion[1] f.quaternion[2] f.quaternion[3]
+                    # f.euler[0] f.euler[1] f.euler[2] f.translation[0] f.translation[1] f.translation[2]
+                    
+                    # Add the rotation floatQ
+                    # Use this line and comment the other one if you wanna have jitter-free rotation in exchange for a latency increase and a reduction in responsiveness to fast motions
+                    if args.smooth_rotation == 1:
+                        try:
+                            socketString += f"[{HRotXF(f.quaternion[0],timestamp)};{HRotYF(f.quaternion[1],timestamp)};{HRotZF(f.quaternion[2],timestamp)};{HRotWF(f.quaternion[3],timestamp)}],"
+                        except:
+                            socketString += f"[{f.quaternion[0]};{f.quaternion[1]};{f.quaternion[2]};{f.quaternion[3]}],"
+                    else:
+                        socketString += f"[{f.quaternion[0]};{f.quaternion[1]};{f.quaternion[2]};{f.quaternion[3]}],"
+                    
+                    # Add the translation float3
+                    try:
+                        socketString += f"[{HPosXF(f.translation[1], timestamp):.6f};{HPosYF(f.translation[0], timestamp):.6f};{HPosZF(f.translation[2], timestamp):.6f}],"
+                    except:
+                        socketString += f"[{f.translation[1]:.6f};{f.translation[0]:.6f};{f.translation[2]:.6f}],"
+                    
+                    # Add the blink ratio, output the most opened eye's ratio for both if the difference between
+                    #eye ratios is less than the threshold, otherwise pass the most opened eye's ratio and
+                    #multiply the blinking eye's ratio to make winking possible
+                    #if f.eye_blink[1]-f.eye_blink[0] > 0.17:
+                    #    socketString += f"[{f.eye_blink[1]:.6f};{0.5*f.eye_blink[0]*f.eye_blink[0]:.6f}],"
+                    #elif f.eye_blink[1]-f.eye_blink[0] < -0.17:
+                    #    socketString += f"[{0.5*f.eye_blink[1]*f.eye_blink[1]:.6f};{f.eye_blink[0]:.6f}],"
+                    #else:
+                    #    avgBlink = (f.eye_blink[0] + f.eye_blink[1] + max(f.eye_blink[0],f.eye_blink[1])) / 3
+                    #    socketString += f"[{avgBlink:.6f};{avgBlink:.6f}],"
+                    
+                    # Adds the raw blink ratio
+                    socketString += f"[{f.eye_blink[1]:.6f};{f.eye_blink[0]:.6f}],"
+                        
+                    
+                    # Features: ["eye_l", "eye_r", "eyebrow_steepness_l", "eyebrow_updown_l", "eyebrow_quirk_l", "eyebrow_steepness_r", "eyebrow_updown_r", "eyebrow_quirk_r", "mouth_corner_updown_l", "mouth_corner_inout_l", "mouth_corner_updown_r", "mouth_corner_inout_r", "mouth_open", "mouth_wide"]
+
+                    # Features can return a null value, we don't want this so we check if they are null and set them to 0.0
+                    if (not "mouth_open" in f.current_features):
+                        f.current_features["mouth_open"] = 0.0
+                    if (not "mouth_wide" in f.current_features):
+                        f.current_features["mouth_wide"] = 0.0
+                    # Add the mouth properties as float2, a positive number means more open
+                    socketString += f"[{f.current_features['mouth_open']:.6f};{MouthWideF(f.current_features['mouth_wide'], timestamp):.6f}],"
+
+                    if not "eyebrow_updown_l" in f.current_features:
+                        f.current_features["eyebrow_updown_l"] = 0.0
+                    if not "eyebrow_updown_r" in f.current_features:
+                        f.current_features["eyebrow_updown_r"] = 0.0
+                    # Add both eyebrow's up/down ratio as float2, a positive number means up
+                    socketString += f"[{LEyeBrowUDF(f.current_features['eyebrow_updown_l'], timestamp):.6f};{REyeBrowUDF(f.current_features['eyebrow_updown_r'], timestamp):.6f}],"
+
+                    # Gaze Tracking
+
+                    RGazepoint = (RGazepointFx(f.pts_3d[66][0], timestamp),RGazepointFy(f.pts_3d[66][1], timestamp))
+                    LGazepoint = (LGazepointFx(f.pts_3d[67][0], timestamp),LGazepointFy(f.pts_3d[67][1], timestamp))
+                    RTopRight = (RTopRightFx(f.pts_3d[37][0], timestamp),RTopRightFy(f.pts_3d[37][1], timestamp))
+                    RTopLeft = (RTopLeftFx(f.pts_3d[38][0], timestamp),RTopLeftFy(f.pts_3d[38][1], timestamp))
+                    RBotRight = (RBotRightFx(f.pts_3d[41][0], timestamp),RBotRightFy(f.pts_3d[41][1], timestamp))
+                    RBotLeft = (RBotLeftFx(f.pts_3d[40][0], timestamp),RBotLeftFy(f.pts_3d[40][1], timestamp))
+                    LTopRight = (LTopRightFx(f.pts_3d[43][0], timestamp),LTopRightFy(f.pts_3d[43][1], timestamp))
+                    LTopLeft = (LTopLeftFx(f.pts_3d[44][0], timestamp),LTopLeftFy(f.pts_3d[44][1], timestamp))
+                    LBotRight = (LBotRightFx(f.pts_3d[47][0], timestamp),LBotRightFy(f.pts_3d[47][1], timestamp))
+                    LBotLeft = (LBotLeftFx(f.pts_3d[46][0], timestamp),LBotLeftFy(f.pts_3d[46][1], timestamp))
+                    
+                    RBorderRight = (RTopRight[0] + RBotRight[0]) / 2
+                    RBorderLeft = (RTopLeft[0] + RBotLeft[0]) / 2
+                    RHorizontalCenter = (RBorderRight + RBorderLeft) / 2
+                    RHorizontalRadius = (abs(RHorizontalCenter - RBorderRight) + abs(RBorderLeft - RHorizontalCenter)) / 2
+                    RBorderTop = (RTopRight[1] + RTopLeft[1]) / 2
+                    RBorderBot = (RBotRight[1] + RBotLeft[1]) / 2
+                    RVerticalCenter = (RBorderTop + RBorderBot) / 2
+                    RVerticalRadius = (abs(RVerticalCenter - RBorderTop) + abs(RBorderBot - RVerticalCenter)) / 2
+                    RLookLR = (RGazepoint[0] - RHorizontalCenter) / RHorizontalRadius
+                    RLookUD = (RGazepoint[1] - RVerticalCenter) / RVerticalRadius
+                    LBorderRight = (LTopRight[0] + LBotRight[0]) / 2
+                    LBorderLeft = (LTopLeft[0] + LBotLeft[0]) / 2
+                    LHorizontalCenter = (LBorderRight + LBorderLeft) / 2
+                    LHorizontalRadius = (abs(LHorizontalCenter - LBorderRight) + abs(LBorderLeft - LHorizontalCenter)) / 2
+                    LBorderTop = (LTopRight[1] + LTopLeft[1]) / 2
+                    LBorderBot = (LBotRight[1] + LBotLeft[1]) / 2
+                    LVerticalCenter = (LBorderTop + LBorderBot) / 2
+                    LVerticalRadius = (abs(LVerticalCenter - LBorderTop) + abs(LBorderBot - LVerticalCenter)) / 2
+                    LLookLR = (LGazepoint[0] - LHorizontalCenter) / LHorizontalRadius
+                    LLookUD = (LGazepoint[1] - LVerticalCenter) / LVerticalRadius
+                    LookLR = GazeLR((RLookLR + LLookLR) / 2, timestamp)
+                    LookUD = GazeUD((RLookUD + LLookUD) / 2, timestamp)
+
+                    socketString += f"[{LookLR:.6f};{-LookUD:.6f}],"
+
+                    # If the AI loses tracking of a face, when it recovers it it'll return 0.0 on all data for the first frame
+                    # This fixes that by sending the last good tracking data instead
+                    if (f.euler[0] is None) or f.euler[0] == 0.0:
+                        socketString = lastSocketString
+
+                if detected:
+                    if not lastDetected:
+                        #Prints on console every time the AI loses/recovers tracking of a face
+                        print("Got Tracking")
+                        lastDetected = True
+                    # This is valid data, so we store it as the last valid data
+                    lastSocketString = socketString
+                    # The boolean value is meant for Logix, usually returning the data to a neutral state
+                    await websocket.send(f"True,{socketString}")
+                else:
+                    if lastDetected:
+                        print("Lost Tracking")
+                        lastDetected = False
+                    # We send the last valid data as to not make the user's head jump around back to 0 rotation
+                    await websocket.send(f"False,{lastSocketString}")
                 
-                # Features: ["eye_l", "eye_r", "eyebrow_steepness_l", "eyebrow_updown_l", "eyebrow_quirk_l", "eyebrow_steepness_r", "eyebrow_updown_r", "eyebrow_quirk_r", "mouth_corner_updown_l", "mouth_corner_inout_l", "mouth_corner_updown_r", "mouth_corner_inout_r", "mouth_open", "mouth_wide"]
-
-                # Features can return a null value, we don't want this so we check if they are null and set them to 0.0
-                if (not "mouth_open" in f.current_features):
-                    f.current_features["mouth_open"] = 0.0
-                if (not "mouth_wide" in f.current_features):
-                    f.current_features["mouth_wide"] = 0.0
-                # Add the mouth properties as float2, a positive number means more open
-                socketString += f"[{f.current_features['mouth_open']:.6f};{MouthWideF(f.current_features['mouth_wide'], timestamp):.6f}],"
-
-                if not "eyebrow_updown_l" in f.current_features:
-                    f.current_features["eyebrow_updown_l"] = 0.0
-                if not "eyebrow_updown_r" in f.current_features:
-                    f.current_features["eyebrow_updown_r"] = 0.0
-                # Add both eyebrow's up/down ratio as float2, a positive number means up
-                socketString += f"[{LEyeBrowUDF(f.current_features['eyebrow_updown_l'], timestamp):.6f};{REyeBrowUDF(f.current_features['eyebrow_updown_r'], timestamp):.6f}],"
-
-                # If the AI loses tracking of a face, when it recovers it it'll return 0.0 on all data for the first frame
-                # This fixes that by sending the last good tracking data instead
-                if (f.euler[0] is None) or f.euler[0] == 0.0:
-                    socketString = lastSocketString
-
-            if detected:
-                if not lastDetected:
-                    #Prints on console every time the AI loses/recovers tracking of a face
-                    print("Got Tracking")
-                    lastDetected = True
-                # This is valid data, so we store it as the last valid data
-                lastSocketString = socketString
-                # The boolean value is meant for Logix, usually returning the data to a neutral state
-                await websocket.send(f"True,{socketString}")
-            else:
-                if lastDetected:
-                    print("Lost Tracking")
-                    lastDetected = False
-                # We send the last valid data as to not make the user's head jump around back to 0 rotation
-                await websocket.send(f"False,{lastSocketString}")
-            
-            failures = 0
-        except Exception as e:
-            if e.__class__ == KeyboardInterrupt:
-                if args.silent == 0:
-                    print("Quitting")
-                break
-            traceback.print_exc()
-            failures += 1
-            if failures > 30:
-                break
-        del frame
+                failures = 0
+            except Exception as e:
+                if e.__class__ == KeyboardInterrupt:
+                    if args.silent == 0:
+                        print("Quitting")
+                    break
+                traceback.print_exc()
+                failures += 1
+                if failures > 30:
+                    break
+            del frame
+    except Exception as e:
+        traceback.print_exc()
 
 print("Awaiting for Neos websocket client connection...")
 
-# Pushes string to port 7010
+# Opens server in port 7010
 asyncio.get_event_loop().run_until_complete(
     websockets.serve(facetrack, 'localhost', 7010))
 asyncio.get_event_loop().run_forever()
