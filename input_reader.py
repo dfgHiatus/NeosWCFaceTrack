@@ -161,7 +161,7 @@ def test_reader(reader):
             ret, frame = reader.read()
             if not ret:
                 time.sleep(0.02)
-                print("No frame")
+                print("No frame. Please restart the program.")
             else:
                 print("Got frame")
                 got_any += 1
