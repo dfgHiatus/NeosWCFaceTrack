@@ -1,17 +1,20 @@
-%ECHO OFF
+@ECHO OFF
+
+echo Entering nothing in the following prompts will use the default option.
+
 
 facetrackerNeos -l 1
 
 echo Make sure that nothing is accessing your camera before you proceed.
 
 set cameraNum=0
-set /p cameraNum=Select your camera from the list above and enter the corresponding number:
+set /p cameraNum=Enter the number of the camera you'd like to use from the list above: 
 echo.
 
 facetrackerNeos -a %cameraNum%
 
 set dcaps=-1
-set /p dcaps=Select your camera mode. It's recommended to pick the lowest resolution:
+set /p dcaps=Enter the number of your preferred resolution or press enter for default settings. A lower resolution runs faster:
 echo.
 
 echo Tracking model options.
@@ -22,6 +25,7 @@ echo  0: Blinking is enabled in the following models.
 echo  1: Better quality than 0, but slower speed.
 echo  2: Better quality than 1, but slower speed.
 echo  3: Best tracking quality of all the models, but also the slowest model.
+echo  4: Like 3, but optimized for wink detection.
 echo -3: Quality is between -1 and 0.
 echo -2: Quality is roughly like 1, but is faster. Recommended unless you want better tracking accuracy, in which case use model 2 or 3.
 
@@ -29,12 +33,12 @@ set model=-2
 set /p model=Select the tracking model (default -2): 
 echo.
 
-set smoothr=1
-set /p smoothr=Enter 1 to enable smoothing of head rotation, or enter 0 to disable (default 1): 
+set smootht=0
+set /p smootht=Enter 1 if you'd like the position data to be smoothed. (default 0): 
 echo.
 
-set smoothp=1
-set /p smoothp=Enter 1 to enable smoothing of head position, or enter 0 to disable (default 1): 
+set smoothr=0
+set /p smoothr=Enter 1 if you'd like the rotation data to be smoothed. (default 0): 
 echo.
 
-start facetrackerNeos -c %cameraNum% -D %dcaps% --model %model% --smooth-rotation %smoothr% --smooth-translation %smoothp%
+start facetrackerNeos -c %cameraNum% -D %dcaps% --model %model% --smooth-translation %smootht% --smooth-rotation %smoothr%
