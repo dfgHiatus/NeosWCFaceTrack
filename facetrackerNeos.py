@@ -223,8 +223,8 @@ async def facetrack(websocket,path):
     if (args.smooth_rotation == 1):
         oeHeadRotationConfig = {
             'freq': 18,
-            'mincutoff': 1.2,
-            'beta': 1.2,
+            'mincutoff': 1.6,
+            'beta': 1.4,
             'dcutoff': 1.0,
             }
 
