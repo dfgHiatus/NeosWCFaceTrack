@@ -1,5 +1,5 @@
--Navigate to the following url: https://github.com/Ruzert/NeosWCFaceTracking/releases
--Open the last version starting with 'NeosWCFaceTracking' and download it.
+-Navigate to the following url: https://github.com/Ruz-eh/NeosWCFaceTrack/releases
+-Open the last version starting with 'NeosWCFaceTrack' and download it.
 -Extract it somewhere on your PC.
 -Navigate to the Binary folder.
 -Run run.bat and enter the configuration. You may need to select the lowest resolution.
