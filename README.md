@@ -15,7 +15,7 @@ OpenSeeFace leverages several different models for face detection, making it opt
 * Model **2**: This is a slower model with good accuracy. (50fps)
 * Model **3** (default): This is the slowest and highest accuracy model. (44fps)
 
-To use these, open a terminal windows and type "python faceTrackerNeos.py --model X" as an argument, with X being the model in question. 
+To use these, open a terminal windows and type "python facetrackerNeos.py --model X" as an argument, with X being the model in question. 
 
 # Credits
 
