@@ -21,7 +21,7 @@ There is an inverse relationship between sample speed and sample accuracy. OpenS
 
 Some Special models that are out of order:
 * Model **-3** : Quality is between -1 and 0.
-* Model **-2** (default) : Quality is is between 1 and 2. Recommended for the most part.
+* Model **-2** (default) : Quality is between 1 and 2. Recommended for the most part.
 
 You can select a model by running run.bat located inside the Binary folder of a release.
 
