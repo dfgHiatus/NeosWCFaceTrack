@@ -1,6 +1,8 @@
 # Overview
 
-NeosWCFaceTrack is a Fork of OpenSeeFace designed to give Screen-Mode users in NeosVR control of their avatar's expressions. 
+NeosWCFaceTrack is a Fork of OpenSeeFace designed to give Screen-Mode users in NeosVR control of their avatar's expressions.  
+
+If you'd like to suggest an improvement or report a bug feel free to do so in the Issues tab.
 
 # Installation
 
