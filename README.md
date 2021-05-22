@@ -8,21 +8,22 @@ Please refer to the Wiki! We have also thoroughly documented the process as well
 
 # Notes and tidbits
 
-OpenSeeFace leverages several different models for face detection, making it optimal for slower PCs.
-Available models are:
+There is an inverse relationship between sample speed and sample accuracy. OpenSeeFace leverages several different models for face detection, some are optimal for slower PCs. The models are as follows:
 
-* Model **-1**: The fastest model, with the poorest quality. Blink and gaze tracking are disabled.
-* Model **0**: This is a very fast, low accuracy model.
-* Model **1**: This is a slightly slower model with better accuracy.
-* Model **2**: This is a slower model with good accuracy.
+* Model **-1**: The fastest model, though Blink/Gaze tracking are disabled.
+* Model **0**
+* Model **1**
+* Model **2**
 * Model **3** : This is the slowest and highest accuracy model.
 * Model **4** : Like 3, but optimized for wink detection.
+
+Some Special models that are out of order:
 * Model **-3** : Quality is between -1 and 0.
-* Model **-2** (default) : Quality is roughly like 1, but is faster. Recommended unless you want better tracking accuracy, in which case use model 2, 3, or 4.
+* Model **-2** (default) : Quality is is between 1 and 2. Recommended for the most part.
 
 You can select a model by running run.bat located inside the Binary folder of a release.
 
-To use these in Python, open a terminal windows and type "python facetrackerNeos.py --model X" as an argument, with X being the model in question.
+To use these in Python, open a terminal windows and type "python facetrackerNeos.py --model X" as an argument, with X being the model number in question.
 
 # Credits
 
