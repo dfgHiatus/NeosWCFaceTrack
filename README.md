@@ -8,6 +8,8 @@ If you'd like to suggest an improvement or report a bug, feel free to do so in t
 
 Please refer to the Wiki! We have also thoroughly documented the process as well on [Imgur](https://imgur.com/a/RUiewxc), be sure to take a look there as well.
 
+## For Developers, read on
+
 # Notes and tidbits
 
 There is an inverse relationship between sample speed and sample accuracy. OpenSeeFace leverages several different models for face detection, some are optimal for slower PCs. The models are as follows:
@@ -23,9 +25,7 @@ Some Special models that are out of order:
 * Model **-3** : Quality is between -1 and 0.
 * Model **-2** (default) : Quality is between 1 and 2. Recommended for the most part.
 
-You can select a model by running run.bat located inside the Binary folder of a release.
-
-To use these in Python, open a terminal windows and type "python facetrackerNeos.py --model X" as an argument, with X being the model number in question.
+To use these in Python 3.6+, open a terminal windows and type "python facetrackerNeos.py --model X" as an argument, with X being the model number in question.
 
 # Credits
 
