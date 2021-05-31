@@ -6,7 +6,7 @@ If you'd like to suggest an improvement or report a bug, feel free to do so in t
 
 ## Installation
 
-Please refer to the Wiki! We have also thoroughly documented the process as well on [Imgur](https://imgur.com/a/RUiewxc), be sure to take a look there as well.
+Please refer to the [Wiki](https://github.com/Ruz-eh/NeosWCFaceTrack/wiki/Installation)!
 
 # For Developers, read on
 
