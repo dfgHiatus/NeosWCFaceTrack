@@ -325,12 +325,6 @@ async def facetrack(websocket,path):
                     detected = True
                     f = copy.copy(f)
                     f.id += args.face_id_offset
-                    
-                    # Sometimes the data can be garbage, in this case we send the last valid data as the new data and skip the frame
-                    # Usual valid ranges for the z position (depth) are from -5.0 (furthest away) to -2.0
-                    if (f.translation[2] < -7.0) or (f.translation[2] > -1.0):
-                        socketString = lastSocketString
-                        continue
 
                     # If the AI loses tracking of a face, when it recovers it it'll return 0.0 on all data for the first frame
                     # This fixes that by sending the last good tracking data instead
@@ -462,7 +456,7 @@ async def facetrack(websocket,path):
                     if args.silent == 0:
                         print("Quitting")
                     break
-                traceback.print_exc()
+                #traceback.print_exc()
                 failures += 1
                 if failures > 30:
                     break
