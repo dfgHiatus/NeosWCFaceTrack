@@ -42,6 +42,7 @@ To use these in Python 3.6+, open a terminal windows and type "python facetracke
 1. Install pyinstaller by running the following command: `pip install pyinstaller`
 2. Run the `make_exe.bat` batch script, it should build the binary's folder inside the `dist` folder.
 3. You can either run that executable separately or move that folder to the root of the project, as is in the releases. If you do move it, you may delete the `models` folder inside the binary, as it will use the `models` folder located in the root of the project.
+4. If you have issues with the built executable, some antivirus software might flag executables built by pyinstaller as malware, if that's the case add the executable as an exception to your antivirus.
 
 ## Usage of webcam data
 
