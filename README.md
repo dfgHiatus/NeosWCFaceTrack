@@ -45,7 +45,7 @@ To use these in Python 3.6+, open a terminal windows and type "python facetracke
 
 ## Usage of webcam data
 
-The program collects a single frame from the camera per websocket request, processes it through the AI to determine facial landmarks, and then destroys the frame. Afterwards, the processed landmark data gets sent over to the client of the websockets server, in a string format. No other data is collected, and no other network connections are made.
+The program collects a single frame from the camera per websocket request, processes it through the AI to determine facial landmarks, and then destroys the frame. Afterwards, the processed landmark data gets sent over to the client of the websockets server in a string format, for the purpose of driving a virtual avatar. No other data is collected, and no other network connections are made.
 
 ## Credits
 
