@@ -40,9 +40,12 @@ To use these in Python 3.6+, open a terminal windows and type "python facetracke
 ## Building the Windows executable
 
 1. Install pyinstaller by running the following command: `pip install pyinstaller`
-2. Run the `make_exe.bat` batch script, it should build the binary's folder inside the `dist` folder.
-3. You can either run that executable separately or move that folder to the root of the project, as is in the releases. If you do move it, you may delete the `models` folder inside the binary, as it will use the `models` folder located in the root of the project.
-4. If you have issues with the built executable, some antivirus software might flag executables built by pyinstaller as malware, if that's the case add the executable as an exception to your antivirus.
+2. Make sure you have these files on the same folder as the `make_exe.bat` batch script:  
+ `msvcp140.dll`, `vcomp140.dll`, `concrt140.dll`, `vccorlib140.dll`.  
+You can find these files in [Microsoft's Visual C++ Redistributables for Visual Studio](https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0).
+3. Run the `make_exe.bat` batch script, it should build the binary's folder inside the `dist` folder.
+4. You can either run that executable separately or move that folder to the root of the project, as is in the releases. If you do move it, you may delete the `models` folder inside the binary, as it will use the `models` folder located in the root of the project.
+5. If you have issues with the built executable, some antivirus software might flag executables built by pyinstaller as malware, if that's the case add the executable as an exception to your antivirus.
 
 ## Usage of webcam data
 
