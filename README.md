@@ -4,7 +4,7 @@ NeosWCFaceTrack is a Fork of OpenSeeFace designed to give Screen-Mode users in N
 
 If you'd like to suggest an improvement or report a bug, feel free to do so in the Issues tab.
 
-## Installation
+## Installation and Usage
 
 Please refer to the [Wiki](https://github.com/Ruz-eh/NeosWCFaceTrack/wiki)!
 
