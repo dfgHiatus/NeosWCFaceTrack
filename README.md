@@ -4,13 +4,17 @@ NeosWCFaceTrack is a Fork of OpenSeeFace designed to give Screen-Mode users in N
 
 If you'd like to suggest an improvement or report a bug, feel free to do so in the Issues tab.
 
-## Installation and Usage
+# Installation and Usage
 
-Please refer to the [Wiki](https://github.com/Ruz-eh/NeosWCFaceTrack/wiki)!
+All information about running the program and setting up your avatar is located in the Wiki:
 
-# For Developers, read on
+### [Start Here](https://github.com/Ruz-eh/NeosWCFaceTrack/wiki)!
 
-## Notes and tidbits
+___
+
+## For Developers, read on
+
+### Notes and tidbits
 
 There is an inverse relationship between sample speed and sample accuracy. OpenSeeFace leverages several different models for face detection, some are optimal for slower PCs. The models are as follows:
 
@@ -27,7 +31,7 @@ Some Special models that are out of order:
 
 To use these in Python 3.6+, open a terminal windows and type "python facetrackerNeos.py --model X" as an argument, with X being the model number in question.
 
-## Running the python script
+### Running the python script
 
 1. Install python 3.6+ with pip: https://www.python.org/downloads/release/python-3610/ (also works on 3.8)
 2. Clone or download the project.
@@ -37,7 +41,7 @@ To use these in Python 3.6+, open a terminal windows and type "python facetracke
 5. To check if everything's working, run facetracker.py, it should show your face and the main landmarks on it. If it works, close it, if it doesn't, check your installation or that your webcam is the default device.
 6. Run facetrackerNeos.py while using an avatar that's correctly set up.
 
-## Building the Windows executable
+### Building the Windows executable
 
 1. Install pyinstaller by running the following command: `pip install pyinstaller`
 2. Make sure you have these files on the same folder as the `make_exe.bat` batch script:  
