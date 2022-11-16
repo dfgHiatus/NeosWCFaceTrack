@@ -4,13 +4,17 @@ NeosWCFaceTrack is a Fork of OpenSeeFace designed to give Screen-Mode users in N
 
 If you'd like to suggest an improvement or report a bug, feel free to do so in the Issues tab.
 
-## Installation
+# Installation and Usage
 
-Please refer to the Wiki! We have also thoroughly documented the process as well on [Imgur](https://imgur.com/a/RUiewxc), be sure to take a look there as well.
+All information about running the program and setting up your avatar is located in the Wiki:
 
-# For Developers, read on
+### [Start Here](https://github.com/Ruz-eh/NeosWCFaceTrack/wiki)!
 
-## Notes and tidbits
+___
+
+## For Developers, read on
+
+### Notes and tidbits
 
 There is an inverse relationship between sample speed and sample accuracy. OpenSeeFace leverages several different models for face detection, some are optimal for slower PCs. The models are as follows:
 
@@ -27,6 +31,36 @@ Some Special models that are out of order:
 
 To use these in Python 3.6+, open a terminal windows and type "python facetrackerNeos.py --model X" as an argument, with X being the model number in question.
 
+### Running the python script
+
+1. Install python 3.6+ with pip: https://www.python.org/downloads/release/python-3610/ (also works on 3.8)
+2. Clone or download the project.
+3. Install the requirements by opening a console window, navigating to the folder of the project, and executing the following command: 
+ `pip install -r requirements.txt`
+4. Make sure the default camera is connected and not in use.
+5. To check if everything's working, run facetracker.py, it should show your face and the main landmarks on it. If it works, close it, if it doesn't, check your installation or that your webcam is the default device.
+6. Run facetrackerNeos.py while using an avatar that's correctly set up.
+
+### Building the Windows executable
+
+1. Install pyinstaller by running the following command: `pip install pyinstaller`
+2. Make sure you have these files on the same folder as the `make_exe.bat` batch script:  
+ `msvcp140.dll`, `vcomp140.dll`, `concrt140.dll`, `vccorlib140.dll`.  
+You can find these files in [Microsoft's Visual C++ Redistributables for Visual Studio](https://support.microsoft.com/en-us/topic/the-latest-supported-visual-c-downloads-2647da03-1eea-4433-9aff-95f26a218cc0).
+3. Run the `make_exe.bat` batch script, it should build the binary's folder inside the `dist` folder.
+4. You can either run that executable separately or move that folder to the root of the project, as is in the releases. If you do move it, you may delete the `models` folder inside the binary, as it will use the `models` folder located in the root of the project.
+5. If you have issues with the built executable, some antivirus software might flag executables built by pyinstaller as malware, if that's the case add the executable as an exception to your antivirus.
+
+## Usage of webcam data
+
+The program collects a single frame from the camera per websocket request, processes it through the AI to determine facial landmarks, and then destroys the frame. Afterwards, the processed landmark data gets sent over to the client of the websockets server in a string format, for the purpose of driving a virtual avatar. No other data is collected, and no other network connections are made.
+
 ## Credits
 
 Big thanks to OpenSeeFace for making this possible! 
+
+## License
+
+The code and models are distributed under the BSD 2-clause license.
+
+You can find licenses of third party libraries used for binary builds in the Licenses folder.

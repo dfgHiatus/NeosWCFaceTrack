@@ -11,6 +11,8 @@ pyinstaller facetrackerNeos.spec --onedir ^
     --add-binary vccorlib140.dll;. ^
     --add-binary run.bat;.
 
+xcopy models dist\facetrackerNeos\models\
+
 del dist\facetrackerNeos\cv2\opencv_videoio_ffmpeg420_64.dll
 
 pause

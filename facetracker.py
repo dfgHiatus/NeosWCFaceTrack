@@ -20,6 +20,7 @@ else:
     parser.add_argument("-W", "--width", type=int, help="Set raw RGB width", default=640)
     parser.add_argument("-H", "--height", type=int, help="Set raw RGB height", default=360)
 parser.add_argument("-c", "--capture", help="Set camera ID (0, 1...) or video file", default="0")
+parser.add_argument("-M", "--mirror-input", action="store_true", help="Process a mirror image of the input video")
 parser.add_argument("-m", "--max-threads", type=int, help="Set the maximum number of threads", default=1)
 parser.add_argument("-t", "--threshold", type=float, help="Set minimum confidence threshold for face tracking", default=None)
 parser.add_argument("-d", "--detection-threshold", type=float, help="Set minimum confidence threshold for face detection", default=0.6)
@@ -219,6 +220,8 @@ try:
             continue
 
         ret, frame = input_reader.read()
+        if ret and args.mirror_input:
+            frame = cv2.flip(frame, 1)
         if not ret:
             if repeat:
                 if need_reinit == 0:
@@ -290,7 +293,7 @@ try:
                 packet.extend(bytearray(struct.pack("f", f.translation[1])))
                 packet.extend(bytearray(struct.pack("f", f.translation[2])))
                 if not log is None:
-                    log.write(f"{frame_count},{now},{width},{height},{args.fps},{face_num},{f.id},{f.eye_blink[0]},{f.eye_blink[1]},{f.conf},{f.success},{f.pnp_error},{f.quaternion[0]},{f.quaternion[1]},{f.quaternion[2]},{f.quaternion[3]},{f.euler[0]},{f.euler[1]},{f.euler[2]},{f.rotation[0]},{f.rotation[1]},{f.rotation[2]},{f.translation[0]},{f.translation[1]},{f.translation[2]}")
+                    log.write(f"{frame_count},{now},{width},{height},{fps},{face_num},{f.id},{f.eye_blink[0]},{f.eye_blink[1]},{f.conf},{f.success},{f.pnp_error},{f.quaternion[0]},{f.quaternion[1]},{f.quaternion[2]},{f.quaternion[3]},{f.euler[0]},{f.euler[1]},{f.euler[2]},{f.rotation[0]},{f.rotation[1]},{f.rotation[2]},{f.translation[0]},{f.translation[1]},{f.translation[2]}")
                 for (x,y,c) in f.lms:
                     packet.extend(bytearray(struct.pack("f", c)))
                 if args.visualize > 1:
@@ -302,9 +305,9 @@ try:
                     packet.extend(bytearray(struct.pack("f", x)))
                     if not log is None:
                         log.write(f",{y},{x},{c}")
-                    if pt_num == 66 and (f.eye_blink[0] < 0.30 or c < 0.30):
+                    if pt_num == 66 and (f.eye_blink[0] < 0.30 or c < 0.20):
                         continue
-                    if pt_num == 67 and (f.eye_blink[1] < 0.30 or c < 0.30):
+                    if pt_num == 67 and (f.eye_blink[1] < 0.30 or c < 0.20):
                         continue
                     x = int(x + 0.5)
                     y = int(y + 0.5)

@@ -18,6 +18,7 @@ else:
     parser.add_argument("-W", "--width", type=int, help="Set raw RGB width", default=640)
     parser.add_argument("-H", "--height", type=int, help="Set raw RGB height", default=360)
 parser.add_argument("-c", "--capture", help="Set camera ID (0, 1...) or video file", default="0")
+parser.add_argument("-M", "--mirror-input", action="store_true", help="Process a mirror image of the input video")
 parser.add_argument("-m", "--max-threads", type=int, help="Set the maximum number of threads", default=1)
 parser.add_argument("-t", "--threshold", type=float, help="Set minimum confidence threshold for face tracking", default=None)
 parser.add_argument("-d", "--detection-threshold", type=float, help="Set minimum confidence threshold for face detection", default=0.6)
@@ -295,6 +296,8 @@ async def facetrack(websocket,path):
 
         async for message in websocket:
             ret, frame = input_reader.read()
+            if ret and args.mirror_input:
+                frame = cv2.flip(frame, 1)
             if not ret:
                 if repeat:
                     if need_reinit == 0:
@@ -325,12 +328,6 @@ async def facetrack(websocket,path):
                     detected = True
                     f = copy.copy(f)
                     f.id += args.face_id_offset
-                    
-                    # Sometimes the data can be garbage, in this case we send the last valid data as the new data and skip the frame
-                    # Usual valid ranges for the z position (depth) are from -5.0 (furthest away) to -2.0
-                    if (f.translation[2] < -7.0) or (f.translation[2] > -1.0):
-                        socketString = lastSocketString
-                        continue
 
                     # If the AI loses tracking of a face, when it recovers it it'll return 0.0 on all data for the first frame
                     # This fixes that by sending the last good tracking data instead
@@ -462,7 +459,7 @@ async def facetrack(websocket,path):
                     if args.silent == 0:
                         print("Quitting")
                     break
-                traceback.print_exc()
+                #traceback.print_exc()
                 failures += 1
                 if failures > 30:
                     break
